@@ -97,7 +97,8 @@ const SIZE = '1088x480';
 const SAFE = '504x368+286+72';
 /* Where the map can go, in the order the Display button steps through them:
  * the render's target and the name the page shows. */
-const DISPLAYS = [['map', 'Cluster'], ['hud', 'HUD']];
+/* map+hud: both at once (wesleyredhat HUD build; each target its own layer, the one upload budget shared) */
+const DISPLAYS = [['map', 'Cluster'], ['hud', 'HUD'], ['map+hud', 'Cluster + HUD']];
 /* The HUD map's sizes, in the order the size button steps through them: its
  * width in percent of the HUD's (0: the standard fitted box, about 57 %). */
 /* 85 % is the widest the HUD shows whole (the render holds a larger saved size to it). */
@@ -479,8 +480,7 @@ class WazeClusterControl extends EventEmitter {
     }
 
     displayText() {
-        /* an older saved "map+hud" shows as the cluster; the next press picks one */
-        const t = this.displayTarget() === 'map+hud' ? 'map' : this.displayTarget();
+        const t = this.displayTarget();
         const d = DISPLAYS.find(([v]) => v === t);
         return `Show map on: ${d ? d[1] : '…'}`;
     }
@@ -527,7 +527,7 @@ class WazeClusterControl extends EventEmitter {
         if (!this.canChangeDisplay()) {
             return;
         }
-        const cur = this.displayTarget() === 'map+hud' ? 'map' : this.displayTarget();
+        const cur = this.displayTarget();
         const i = DISPLAYS.findIndex(([t]) => t === cur);
         const next = DISPLAYS[(i + 1) % DISPLAYS.length][0];
         this._askedDisplay = next;
