@@ -29,6 +29,16 @@ CarPlay` while the stock map (in Off, an empty centre) shows.
 To remove, remove the app in the Store, then the Waze tool, which reverts
 the patch.
 
+## HUD
+
+Contributed by [eroobeeroo](https://github.com/eroobeeroo): the map (Waze or
+Google Maps) on the head-up display instead of the cluster. **Show map on**
+switches between them. On the HUD the frames are scaled on the head unit to
+the size shown, the corners are rounded and a night map's background is made
+black, which the HUD shows as nothing, so the roads, route and labels float
+in view. The map steps aside while the HUD's media and list pop-ups show. The
+choice and the HUD map size are kept for each driver profile.
+
 ## The page
 
 One `LT_State_Wide` page:
@@ -39,6 +49,8 @@ One `LT_State_Wide` page:
 | setup | `Set Instrument cluster > Central display area to Map view`, always shown |
 | Enable map | applies the patch; shown while it is off, unknown or out of date and no change is pending |
 | Disable map | reverts the patch, which turns the map off; shown while patched and no change is pending |
+| Show map on: Cluster / HUD | moves the map between the instrument cluster and the head-up display at once; kept for the next start and per driver profile |
+| HUD map size | Standard (about 57 % of the HUD's width), 70 %, 85 % or 40 %, resized at once; kept like Show map on. Enabled while the map goes to the HUD |
 | Android Auto | `Android Auto: patched, 180 dpi[, turn card hidden]`, `off`, `patch pending — reboot to activate`, `removal pending — reboot to finish`, `not supported on this car`, `untested aapd build`, `not on this head unit`, `partly patched`, `applying…`, `another change running`, `try again in a few seconds`, `status unavailable`, `not patched`, `failed` |
 | Enable Android Auto | applies its patch; shown while it is off or partly applied, supported and nothing is pending |
 | Disable Android Auto | reverts it; shown while patched and nothing is pending |
