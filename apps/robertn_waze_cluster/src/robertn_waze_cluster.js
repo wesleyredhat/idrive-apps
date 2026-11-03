@@ -18,6 +18,10 @@
  * button while a written change waits for the next head-unit start, its row
  * while it has something to say. Once patched, the render puts the map on
  * the cluster whenever the phone streams it, with no button.
+ * The HUD build (wesleyredhat) adds two General rows: Show map on (Cluster,
+ * HUD, or Cluster + HUD; each press moves the map to the next, kept for the
+ * next start and per driver profile) and HUD map size (Standard, 70 %, 85 %,
+ * 40 %; greyed unless the map goes to the HUD).
  *
  * The Logs page (logs_control.js): Start capture and the Capture row, Save
  * logs and the Saved logs row, the QR code of the address a phone on the
@@ -44,6 +48,7 @@ const logging = require('oap-sdk/src/logging/logging');
 const { WazeClusterControl, ZOOM_STEP } = require('./waze_cluster_control.js');
 const { LogsControl, ROWS: LOGS_ROWS } = require('./logs_control.js');
 const { qrPng } = require('./qr.js');
+const { ProfileSync } = require('./profile_sync.js');
 
 const logger = logging.getSDKLogger();
 
@@ -63,6 +68,8 @@ const AA_ZOOM_IN_NAME = 'wocAaZoomIn';
 const AA_CARD_NAME = 'wocAaCard';
 const GUIDE_NAME = 'wocGuide';
 const GUIDE_TEXT = "Hide BMW's turn box";
+const DISPLAY_NAME = 'wocDisplay';
+const HUD_SIZE_NAME = 'wocHudSize';
 const CAPTURE_NAME = 'wocCapture';
 const CAPTURE_STATUS = 'wocCaptureStatus';
 const LOGS_NAME = 'wocLogs';
@@ -108,6 +115,9 @@ class WazeClusterApp extends OnlineApp {
         this._control.on('change', () => this._render());
         this._logs = new LogsControl({ log: logger });
         this._logs.on('change', () => this._renderLogs());
+        /* the display choice per driver profile, page shown or not */
+        this._profiles = new ProfileSync({ control: this._control, log: logger });
+        this._profiles.start();
 
         this.on('initialized', () => {
             this._appInitialized()
@@ -167,7 +177,7 @@ class WazeClusterApp extends OnlineApp {
         if (!this._state || !this._logsState) {
             return Promise.reject(new Error(`uiDescription has no ${STATE_NAME} or ${LOGS_STATE}`));
         }
-        const names = [STATUS_NAME, MAP_NAME, RESTART_STATUS_NAME, ENABLE_NAME, DISABLE_NAME, AA_STATUS_NAME, AA_ENABLE_NAME, AA_DISABLE_NAME, AA_ZOOM_NAME,
+        const names = [STATUS_NAME, MAP_NAME, DISPLAY_NAME, HUD_SIZE_NAME, RESTART_STATUS_NAME, ENABLE_NAME, DISABLE_NAME, AA_STATUS_NAME, AA_ENABLE_NAME, AA_DISABLE_NAME, AA_ZOOM_NAME,
             AA_ZOOM_OUT_NAME, AA_ZOOM_IN_NAME, AA_CARD_NAME, RESTART_NAME, GUIDE_NAME, CAPTURE_NAME, CAPTURE_STATUS,
             LOGS_NAME, LOGS_SAVE, LOGS_STATUS, LOGS_QR, LOGS_URL].concat(LOGS_ROW_NAMES);
         names.forEach((name) => { this._components[name] = rhmi.getByName(name); });
@@ -193,6 +203,8 @@ class WazeClusterApp extends OnlineApp {
             delete this._written[`selected:${GUIDE_NAME}`];
             this._control.toggleGuidance();
         });
+        this._bind(DISPLAY_NAME, () => this._control.cycleDisplay());
+        this._bind(HUD_SIZE_NAME, () => this._control.cycleHudSize());
         this._bind(CAPTURE_NAME, () => this._control.capture());
         this._bind(LOGS_NAME, () => Promise.resolve(rhmi.openState(LOGS_STATE))
             .catch((err) => logger.warn(`openState ${LOGS_STATE} failed: ${err && err.message}`)));
@@ -414,6 +426,10 @@ class WazeClusterApp extends OnlineApp {
         const c = this._control;
         this._write(STATUS_NAME, c.statusText());
         this._write(MAP_NAME, c.mapText());
+        /* HUD build: Cluster, HUD or both - each press moves the map to the next one */
+        this._write(DISPLAY_NAME, c.displayText());
+        /* the HUD map's size: greyed unless the map goes to the HUD */
+        this._write(HUD_SIZE_NAME, c.hudSizeText());
         this._write(AA_STATUS_NAME, c.aaStatusText());
         this._write(AA_ZOOM_NAME, c.zoomText());
         this._write(AA_CARD_NAME, c.cardText());
@@ -423,7 +439,8 @@ class WazeClusterApp extends OnlineApp {
         [[ENABLE_NAME, c.canEnable()], [DISABLE_NAME, c.canDisable()],
             [AA_ENABLE_NAME, c.canEnableAa()], [AA_DISABLE_NAME, c.canDisableAa()],
             [AA_ZOOM_OUT_NAME, c.canZoom(-ZOOM_STEP)], [AA_ZOOM_IN_NAME, c.canZoom(ZOOM_STEP)],
-            [AA_CARD_NAME, c.canToggleCard()], [CAPTURE_NAME, c.canCapture()], [RESTART_NAME, c.canRestart()]]
+            [AA_CARD_NAME, c.canToggleCard()], [CAPTURE_NAME, c.canCapture()], [RESTART_NAME, c.canRestart()],
+            [DISPLAY_NAME, c.canChangeDisplay()], [HUD_SIZE_NAME, c.canChangeHudSize()]]
             .forEach(([name, enabled]) => this._setEnabled(name, enabled));
         const restartText = c.restartText();
         this._setVisibleComp(RESTART_NAME, c.restartNeeded() || c.restartRequested());
@@ -523,6 +540,7 @@ class WazeClusterApp extends OnlineApp {
                 /* gone already */
             }
         }
+        this._profiles.stop();
         this._shutdownPromise = Promise.resolve()
             .then(() => this.destroyBundles().catch((err) =>
                 logger.info(`destroyBundles: ${err && err.message}`)))
