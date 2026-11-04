@@ -29,6 +29,16 @@ empty centre) shows.
 To remove, remove the app in the Store, then the Waze tool, which reverts
 the patch.
 
+## HUD
+
+Contributed by [eroobeeroo](https://github.com/eroobeeroo): the map (Waze or
+Google Maps) on the head-up display instead of the cluster. **Show map on**
+switches between them. On the HUD the frames are scaled on the head unit to
+the size shown, the corners are rounded and a night map's background is made
+black, which the HUD shows as nothing, so the roads, route and labels float
+in view. The map steps aside while the HUD's media and list pop-ups show. The
+choice and the HUD map size are kept for each driver profile.
+
 ## The page
 
 One `LT_State_Wide` list in three sections, each under a header row
@@ -171,3 +181,10 @@ Enter starts or stops a fake CarPlay stream.
 ## License
 
 GPL-3.0-or-later (`LICENSE`). Third-party files keep their own licenses.
+
+## HUD build (wesleyredhat)
+
+The HUD build adds two rows to the General section: **Show map on** cycles the map between the
+instrument cluster, the head-up display and both at once (Cluster + HUD), and **HUD map size**
+sets Standard (about 57 % of the HUD's width), 70 %, 85 % or 40 %, enabled while the map goes to
+the HUD. Both apply at once and are kept for the next start and per driver profile.
