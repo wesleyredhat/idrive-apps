@@ -218,7 +218,8 @@ async function main() {
         'wocHeadCarPlay CarPlay', 'wocStatus Status: Connecting…', 'wocEnable Patch', 'wocDisable Remove patch',
         'wocHeadAa Android Auto', 'wocAaStatus Status: Connecting…', 'wocAaEnable Patch', 'wocAaDisable Remove patch',
         'wocAaZoom Zoom: —', 'wocAaZoomOut Zoom out', 'wocAaZoomIn Zoom in', "wocAaCard Hide phone's turn card",
-        'wocHeadGeneral General', 'wocMap Cluster map: Off', "wocGuide Hide BMW's turn box", 'wocLogs Logs', 'wocRestart Restart head unit',
+        'wocHeadGeneral General', 'wocMap Cluster map: Off', 'wocDisplay Show map on: …', 'wocHudSize HUD map size: …',
+        "wocGuide Hide BMW's turn box", 'wocLogs Logs', 'wocRestart Restart head unit',
         'wocRestartStatus '],
         'the main page: three sections, in order');
     assert.deepStrictEqual(xmlIds('1').map(([id, type]) => `${id} ${type}`).sort(),
@@ -267,8 +268,8 @@ async function main() {
         await until('page shows the map', () => byName.wocMap.text === `Cluster map: Showing ${RENDER_PAGE} — ${RENDER_FPS}` && status.text === 'Status: Patched');
         assert(!logs.some((l) => /^error/.test(l)), logs.filter((l) => /^error/.test(l)).join('\n'));
         const bound = logs.filter((l) => l.startsWith('info: BIND OK: ')).map((l) => l.split(' ')[3]).sort();
-        assert.deepStrictEqual(bound, ['wocAaCard', 'wocAaDisable', 'wocAaEnable', 'wocAaZoomIn', 'wocAaZoomOut', 'wocCapture', 'wocDisable', 'wocEnable',
-            'wocGuide', 'wocLogs', 'wocLogsSave', 'wocRestart'], 'bound buttons and checkbox');
+        assert.deepStrictEqual(bound, ['wocAaCard', 'wocAaDisable', 'wocAaEnable', 'wocAaZoomIn', 'wocAaZoomOut', 'wocCapture', 'wocDisable',
+            'wocDisplay', 'wocEnable', 'wocGuide', 'wocHudSize', 'wocLogs', 'wocLogsSave', 'wocRestart'], 'bound buttons and checkbox');
         assert.strictEqual(byName.wocRestart.visible, false, 'restart button hidden while the map shows');
         console.log('ok   a page opened while the map is up shows it');
 
@@ -345,7 +346,8 @@ async function main() {
         console.log('ok   held off by the cluster renderer: greyed and unticked, its label kept, presses send nothing');
 
         byName.ST_OnlineApps_WazeCluster.emit('visible', { visible: false });
-        await until('sockets closed', () => render._clients.size === 0 && patch._clients.size === 0);
+        /* the page's own; the driver-profile link to patchd stays (profile_sync.js) */
+        await until('sockets closed', () => render._clients.size === 0 && patch._clients.size === 1);
         console.log('ok   hiding the page closes both sockets');
 
         render.stream(false);
@@ -365,7 +367,7 @@ async function main() {
 
         /* Before the head-unit start that starts the daemon: from the marker. */
         byName.ST_OnlineApps_WazeCluster.emit('visible', { visible: false });
-        await until('closed', () => patch._clients.size === 0);
+        await until('closed', () => patch._clients.size === 1);
         await patch.close();
         fs.writeFileSync(PENDING, JSON.stringify({ action: 'apply' }) + '\n');
         byName.ST_OnlineApps_WazeCluster.emit('visible', { visible: true });
@@ -428,7 +430,9 @@ async function main() {
         await until('logs socket open', () => lserver._clients.size === 1);
         await sleep(900);
         assert.strictEqual(inactiveReports, inactiveBefore, 'moving to the Logs page keeps the app shown');
-        assert.strictEqual(patch._clients.size, 1, 'and its sockets open');
+        /* the page's patch connection and the HUD build's profile sync (its own patchd connection,
+         * src/profile_sync.js): both stay open */
+        assert.strictEqual(patch._clients.size, 2, 'and its sockets open');
         await until('logs state shown', () => byName.wocLogsStatus.text === 'Saved logs: None' &&
             byName.wocLogsUrl.text === `Address: ${lserver.url}` && byName.wocLogsSave.enabled === true);
         const qr1 = byName.wocLogsQr.text;
@@ -488,9 +492,9 @@ async function main() {
         OnlineApp.instance.emit('entryPointExecute', APP_JSON.application.entryPoints[0].uuid);
         await sleep(400);
         assert.strictEqual(lserver._clients.size, 0, 'a tile launch opens no logs socket');
-        assert.strictEqual(patch._clients.size, 1, 'the main page\'s sockets are open');
+        assert.strictEqual(patch._clients.size, 2, 'the main page\'s sockets are open');   /* + the HUD build's profile sync */
         console.log('ok   launched from the tile after leaving on the Logs page: the main page, no logs socket');
-        assert.strictEqual(patch._clients.size, 1, 'the main page keeps its sockets');
+        assert.strictEqual(patch._clients.size, 2, 'the main page keeps its sockets');   /* + the HUD build's profile sync */
         console.log('ok   leaving the Logs page closes the logs socket');
 
         /* the display language: every row in its words, English for a word it lacks */
